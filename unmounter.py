@@ -1,3 +1,10 @@
+"""
+  unmounter
+  This program's purpose is to unmount the mounted drives.
+  It was made solely for expermentation purposes.
+  Made by Ulfur Johann Edvardsson as a part of a M.Sc. thesis at DTU compute.
+"""
+
 import subprocess
 
 
