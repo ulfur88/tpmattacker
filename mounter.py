@@ -1,3 +1,11 @@
+"""
+  mounter
+  This program is used as a supporting tool for tpmattacker.
+  It uses the decrypted key saved to a file during execution
+  of tpmattacker to decrypt and mount the bitlocker encrypted partition.
+  Made by Ulfur Johann Edvardsson as a part of a M.Sc. thesis at DTU compute.
+"""
+
 
 import subprocess
 import argparse
